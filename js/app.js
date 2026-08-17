@@ -284,8 +284,8 @@
   const cluster = L.markerClusterGroup({
     // Small radius + earlier cutoff so individual dots (nicer than numbered
     // boxes) take over as soon as the map is only moderately zoomed in.
-    maxClusterRadius: 28,
-    disableClusteringAtZoom: 16,
+    maxClusterRadius: 20,
+    disableClusteringAtZoom: 15,
     showCoverageOnHover: false,
   });
   map.addLayer(cluster);
