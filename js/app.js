@@ -282,11 +282,14 @@
     maxZoom: 19,
   }).addTo(map);
   const cluster = L.markerClusterGroup({
-    maxClusterRadius: 46,
-    disableClusteringAtZoom: 17,
+    // Small radius + earlier cutoff so individual dots (nicer than numbered
+    // boxes) take over as soon as the map is only moderately zoomed in.
+    maxClusterRadius: 28,
+    disableClusteringAtZoom: 16,
     showCoverageOnHover: false,
   });
   map.addLayer(cluster);
+  window.__map = map; // debug/testing handle
 
   function renderMap(rows) {
     cluster.clearLayers();
