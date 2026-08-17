@@ -281,13 +281,7 @@
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 19,
   }).addTo(map);
-  const cluster = L.markerClusterGroup({
-    // Small radius + earlier cutoff so individual dots (nicer than numbered
-    // boxes) take over as soon as the map is only moderately zoomed in.
-    maxClusterRadius: 20,
-    disableClusteringAtZoom: 15,
-    showCoverageOnHover: false,
-  });
+  const cluster = L.layerGroup();
   map.addLayer(cluster);
   window.__map = map; // debug/testing handle
 
@@ -313,7 +307,7 @@
       );
       markers.push(m);
     }
-    cluster.addLayers(markers);
+    markers.forEach((marker) => cluster.addLayer(marker));
     $("#mapNote").textContent = `${located.toLocaleString()} of ${rows.length.toLocaleString()} shown ideas have a location`;
   }
 
