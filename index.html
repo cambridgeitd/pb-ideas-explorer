@@ -66,12 +66,18 @@
   <section class="panel chart-panel">
     <div class="panel-head">
       <h2>Ideas over time</h2>
-      <div class="seg" role="group" aria-label="Chart grouping">
-        <button class="seg-btn active" data-mode="theme">By theme</button>
-        <button class="seg-btn" data-mode="outcome">By outcome</button>
+      <div class="chart-controls">
+        <div class="seg" role="group" aria-label="Chart grouping">
+          <button class="seg-btn active" data-mode="theme">By theme</button>
+          <button class="seg-btn" data-mode="outcome">By outcome</button>
+        </div>
+        <div class="seg" role="group" aria-label="Chart scale">
+          <button class="seg-btn active" data-scale="count" title="Number of ideas">#</button>
+          <button class="seg-btn" data-scale="pct" title="Percent of all ideas submitted that cycle">%</button>
+        </div>
       </div>
     </div>
-    <p class="panel-hint">Each bar is one PB cycle — click a bar to filter to that cycle.</p>
+    <p class="panel-hint" id="chartHint">Each bar is one PB cycle — click a bar to filter to that cycle.</p>
     <div id="chart" class="chart"></div>
     <div id="chartLegend" class="chart-legend"></div>
   </section>
