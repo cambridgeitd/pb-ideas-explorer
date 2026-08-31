@@ -28,6 +28,15 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const safeHttpUrl = (s) => {
+    if (!s) return null;
+    try {
+      const url = new URL(s);
+      return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+    } catch {
+      return null;
+    }
+  };
 
   function readURL() {
     const p = new URLSearchParams(location.search);
@@ -387,6 +396,7 @@
     if (!i) return;
     const o = OUTCOMES[i.outcome];
     const proj = i.win ? projById[i.win] : null;
+    const sourceUrl = safeHttpUrl(i.sourceUrl);
     let html = `<div class="badges">${badgeHTML(i, true)}</div>
       <h2 id="drawerTitle">${esc(i.title)}</h2>
       <div class="drawer-sec"><h3>Idea</h3><p>${esc(i.desc) || "<em>No description recorded.</em>"}</p></div>`;
@@ -408,7 +418,9 @@
       <strong>Cycle:</strong> ${cycleByNum[i.cycle]?.label || "PB" + i.cycle} (${esc(cycleByNum[i.cycle]?.dates || "")})<br>
       <strong>Committee:</strong> ${esc(i.committee || "—")}<br>
       ${i.location ? `<strong>Location:</strong> ${esc(i.location.split("\n")[0])}<br>` : ""}
-      <strong>Idea #:</strong> ${esc(i.ref)}</p></div>`;
+      <strong>Idea #:</strong> ${esc(i.ref)}
+      ${sourceUrl ? `<br><strong>More information:</strong> <a href="${esc(sourceUrl)}" target="_blank" rel="noopener">View source link</a>` : ""}
+      </p></div>`;
     if (i.ll || (proj && proj.locations.length)) html += `<div class="drawer-sec"><h3>On the map</h3><div id="drawerMap"></div></div>`;
 
     $("#drawerBody").innerHTML = html;

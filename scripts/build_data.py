@@ -89,21 +89,36 @@ NOT_ADVANCED_RE = re.compile(
 
 
 def derive_outcome(row):
-    win_id = row["Winning Project ID"].strip()
-    ist = row["Idea Status"].strip().lower()
-    pst = row["Project Status"].strip().lower()
+    win_id = row.get("Winning Project ID", "").strip()
+    ist = row.get("Idea Status", "").strip().lower()
+    pst = row.get("Project Status", "").strip().lower()
 
     if "previously winning" in ist:
         return "not_advanced"
-    if win_id or "winning ballot" in ist or (WON_RE.search(pst) and "previous" not in pst):
+    if (
+        win_id
+        or "winning project" in ist
+        or "winning ballot" in ist
+        or (WON_RE.search(pst) and "previous" not in pst)
+    ):
         return "won"
     if "shortlist" in ist or "shortlist" in pst or "short list" in pst:
         return "shortlist"
-    if "inspired a ballot" in ist or ist == "ballot project" or (
-        re.search(r"(?:made it (?:on)?to|added (?:on)?to) the (?:\w+ )?ballot|added but did not win", pst)
+    if "inspired a ballot" in ist or ist == "ballot project" or "advanced to ballot" in ist or (
+        re.search(
+            r"(?:made it (?:on)?to|moved to|advanced to|added (?:on)?to) the (?:\w+ )?ballot"
+            r"|advanced to (?:final )?ballot|added but did not win",
+            pst,
+        )
     ):
         return "ballot"
-    if "already in the city" in ist or UNDERWAY_RE.search(pst):
+    if (
+        "already in the city" in ist
+        or "already funded" in ist
+        or "existing budget funding" in ist
+        or "ongoing effort" in ist
+        or UNDERWAY_RE.search(pst)
+    ):
         return "underway"
     if INELIGIBLE_RE.search(pst):
         return "ineligible"
@@ -111,6 +126,8 @@ def derive_outcome(row):
         return "not_advanced"
     if REFERRED_RE.search(pst):
         return "referred"
+    if row.get("PB Cycle", "").strip() in {"11", "12"} and pst:
+        return "not_advanced"
     return "review"
 
 
@@ -126,6 +143,7 @@ CYCLE_META = {
     "9":  {"label": "PB9",  "dates": "Jun – Dec 2022", "voteYear": 2022},
     "10": {"label": "PB10", "dates": "Sep 2023 – Mar 2024", "voteYear": 2024},
     "11": {"label": "PB11", "dates": "Aug 2024 – Mar 2025", "voteYear": 2025},
+    "12": {"label": "PB12", "dates": "Sep 2025 – Mar 2026", "voteYear": 2026},
 }
 
 COORD_LINE = re.compile(r"\s*\(\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+\s*\)\s*$")
@@ -142,9 +160,15 @@ def num(text):
         return None
 
 
-def read_csv(name):
-    with open(SRC / name, encoding="utf-8-sig", newline="") as f:
+def read_csv(path):
+    with open(path, encoding="utf-8-sig", newline="") as f:
         return list(csv.DictReader(f))
+
+
+def read_idea_csvs():
+    # Keep the Open Data export first so existing deep-link IDs remain stable.
+    paths = [SRC / "pb_ideas.csv", *sorted(SRC.glob("pb[0-9]*_ideas.csv"))]
+    return [row for path in paths for row in read_csv(path)]
 
 
 def project_cycle(raw):
@@ -153,9 +177,9 @@ def project_cycle(raw):
 
 
 def main():
-    ideas_raw = read_csv("pb_ideas.csv")
-    projects_raw = read_csv("pb_projects.csv")
-    locations_raw = read_csv("pb_project_locations.csv")
+    ideas_raw = read_idea_csvs()
+    projects_raw = read_csv(SRC / "pb_projects.csv")
+    locations_raw = read_csv(SRC / "pb_project_locations.csv")
 
     locs_by_id = {}
     for r in locations_raw:
@@ -201,6 +225,7 @@ def main():
             "location": clean_location(r["Location"]),
             "ll": [round(lat, 6), round(lng, 6)] if lat is not None and lng is not None else None,
             "win": r["Winning Project ID"].strip() or None,
+            "sourceUrl": r.get("Link to Other Information", "").strip() or None,
         }
         ideas.append(rec)
 
