@@ -17,6 +17,7 @@ plain HTML/CSS/JS, it needs no R server and is hosted free on GitHub Pages.
 - **Full-text search** across 11,000+ idea titles, descriptions, and locations, with term highlighting
 - **Filters** by PB cycle, theme, and outcome — combined, shown as removable chips, and mirrored to the URL so any view is shareable/bookmarkable
 - **Ideas-over-time chart**, stacked by theme or outcome; clicking a bar filters to that cycle
+- **Plain-language category guide** explaining the normalized themes and the chronological PB outcome stages
 - **Clustered map** of the ~5,700 geocoded ideas, colored by theme
 - **Card list** (replacing the old data table) with a detail drawer showing the full description, staff outcome notes, a mini-map, and — when the idea inspired a winning ballot project — that project's votes, cost, and locations
 
@@ -57,6 +58,13 @@ No build step for the site itself. Serve the folder and open it:
 ```sh
 python -m http.server 8000
 ```
+
+### Map tiles
+
+The explorer uses [Stadia Maps Alidade Smooth](https://docs.stadiamaps.com/map-styles/alidade-smooth/)
+for its quiet, marker-friendly basemap. Localhost works without credentials. For production,
+register `cambridgeitd.github.io` as an authorized domain in the Stadia Maps client dashboard;
+domain authentication avoids storing an API key in this public repository.
 
 ## Data wishlist — to take this to the next level
 

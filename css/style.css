@@ -183,9 +183,74 @@ h1, h2, h3 { font-family: var(--heading); font-weight: 600; margin: 0; }
   max-width: 240px;
 }
 .chart-tip b { color: var(--navy); }
-.chart-legend { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 8px; }
+.chart-legend-row {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 8px 16px; margin-top: 8px; flex-wrap: wrap;
+}
+.chart-legend { display: flex; flex: 1 1 360px; flex-wrap: wrap; gap: 5px 14px; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #55585d; }
 .chart-legend i { width: 11px; height: 11px; border-radius: 3px; }
+.chart-info-btn {
+  border: 0; background: none; color: #000; padding: 2px 0;
+  font: 700 12.5px var(--body); text-decoration: underline; cursor: pointer;
+  white-space: nowrap;
+}
+.chart-info-btn:hover { text-decoration-thickness: 2px; }
+.chart-info-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
+
+/* ---------- themes and outcomes guide ---------- */
+.guide-dialog {
+  width: min(760px, calc(100% - 32px)); max-height: min(88vh, 820px);
+  border: 0; border-top: 6px solid var(--navy); border-radius: 10px;
+  padding: 0; color: #000; background: #fff; overflow-y: auto;
+  box-shadow: 0 18px 55px rgba(0,0,0,0.28);
+}
+.guide-dialog::backdrop { background: rgba(24, 28, 40, 0.55); }
+.guide-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 20px; padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--line); background: #fff;
+}
+.guide-eyebrow {
+  display: block; color: #000; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px;
+}
+.guide-head h2 { color: #000; font-size: 24px; }
+.guide-close {
+  flex: none; width: 34px; height: 34px; border: 0; border-radius: 50%;
+  background: var(--bg); color: #000; font-size: 16px; cursor: pointer;
+}
+.guide-close:hover { background: var(--line); }
+.guide-close:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.guide-body { padding: 4px 24px 26px; }
+.guide-body section { margin-top: 20px; }
+.guide-body h3 { color: #000; font-size: 17px; margin-bottom: 3px; }
+.guide-body section > p { margin: 0 0 12px; font-size: 14px; }
+.theme-guide { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 20px; }
+.guide-item, .outcome-guide li { display: flex; align-items: flex-start; gap: 10px; }
+.guide-item > i, .outcome-guide li > i {
+  width: 13px; height: 13px; border-radius: 3px; flex: none; margin-top: 4px;
+}
+.guide-item strong, .outcome-guide strong { display: block; font-size: 13.5px; color: #000; }
+.guide-item p, .outcome-guide p { margin: 1px 0 0; color: #000; font-size: 12.5px; line-height: 1.4; }
+.outcome-guide {
+  list-style: none; margin: 0; padding: 0; display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 20px;
+  counter-reset: outcome;
+}
+.outcome-guide li:not(.unknown-outcome) { counter-increment: outcome; }
+.outcome-guide li:not(.unknown-outcome)::before {
+  content: counter(outcome); width: 19px; height: 19px; border-radius: 50%;
+  flex: none; display: grid; place-items: center; background: var(--navy);
+  color: #fff; font-size: 11px; font-weight: 700; margin-top: 1px;
+}
+.outcome-guide li.unknown-outcome {
+  grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 2px;
+}
+.guide-note {
+  margin-top: 16px !important; padding: 10px 12px; background: var(--bg);
+  border-left: 4px solid var(--navy); font-size: 12.5px !important;
+}
 
 /* ---------- map ---------- */
 #map { height: 560px; border-radius: 6px; margin-top: 10px; }
@@ -296,4 +361,10 @@ mark { background: #ffe89a; padding: 0 1px; border-radius: 2px; }
   #map { height: 380px; }
   .result-count { margin-left: 0; width: 100%; }
   .brand h1 { font-size: 24px; }
+}
+@media (max-width: 600px) {
+  .theme-guide, .outcome-guide { grid-template-columns: 1fr; }
+  .guide-dialog { width: calc(100% - 20px); max-height: 92vh; }
+  .guide-head { padding: 16px 18px 13px; }
+  .guide-body { padding: 2px 18px 22px; }
 }

@@ -79,7 +79,10 @@
     </div>
     <p class="panel-hint" id="chartHint">Each bar is one PB cycle — click a bar to filter to that cycle.</p>
     <div id="chart" class="chart"></div>
-    <div id="chartLegend" class="chart-legend"></div>
+    <div class="chart-legend-row">
+      <div id="chartLegend" class="chart-legend"></div>
+      <button class="chart-info-btn" id="chartInfoBtn" type="button" aria-haspopup="dialog">About themes &amp; outcomes</button>
+    </div>
   </section>
 
   <section class="panel map-panel">
@@ -108,6 +111,29 @@
     </div>
   </section>
 </main>
+
+<dialog class="guide-dialog" id="guideDialog" aria-labelledby="guideTitle">
+  <div class="guide-head">
+    <div>
+      <span class="guide-eyebrow">How to read the explorer</span>
+      <h2 id="guideTitle">Themes and outcomes</h2>
+    </div>
+    <button class="guide-close" id="guideClose" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="guide-body">
+    <section aria-labelledby="themesGuideTitle">
+      <h3 id="themesGuideTitle">Themes</h3>
+      <p>Committee names changed across PB cycles, so related committees are grouped into consistent themes for comparison over time.</p>
+      <div class="theme-guide" id="themeGuide"></div>
+    </section>
+    <section aria-labelledby="outcomesGuideTitle">
+      <h3 id="outcomesGuideTitle">Outcomes, in process order</h3>
+      <p>Outcomes follow an idea from initial eligibility review through the ballot. When outcomes happen at a similar stage, the more positive result appears later.</p>
+      <ol class="outcome-guide" id="outcomeGuide"></ol>
+      <p class="guide-note"><strong>Important:</strong> These categories use the best available status fields and staff notes. Older cycles have gaps, so some outcomes are inferred and may contain errors.</p>
+    </section>
+  </div>
+</dialog>
 
 <div class="drawer-scrim" id="drawerScrim" hidden></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden>

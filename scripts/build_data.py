@@ -27,12 +27,36 @@ OUT = ROOT / "data"
 # Themes: committee names changed across cycles; map them to stable themes.
 # ---------------------------------------------------------------------------
 THEMES = {
-    "streets":   {"label": "Streets, Sidewalks & Transit", "color": "#2294d6"},
-    "parks":     {"label": "Parks, Recreation & Facilities", "color": "#e6730f"},
-    "env":       {"label": "Environment, Health & Safety", "color": "#1a892b"},
-    "community": {"label": "Community & Culture", "color": "#473e81"},
-    "youth":     {"label": "Youth & Education", "color": "#b98f00"},
-    "other":     {"label": "Uncategorized", "color": "#6b7075"},
+    "streets": {
+        "label": "Streets, Sidewalks & Transit",
+        "color": "#2294d6",
+        "description": "Transportation and public ways, including streets, sidewalks, transit, biking, and pedestrian safety.",
+    },
+    "parks": {
+        "label": "Parks, Recreation & Facilities",
+        "color": "#e6730f",
+        "description": "Parks, recreation, public facilities, and shared indoor and outdoor spaces.",
+    },
+    "env": {
+        "label": "Environment, Health & Safety",
+        "color": "#1a892b",
+        "description": "Environmental sustainability, public health, cleanliness, and safety.",
+    },
+    "community": {
+        "label": "Community & Culture",
+        "color": "#473e81",
+        "description": "Arts, culture, community resources, public services, and neighborhood connections.",
+    },
+    "youth": {
+        "label": "Youth & Education",
+        "color": "#b98f00",
+        "description": "Ideas focused on young people, education, learning, and youth programs.",
+    },
+    "other": {
+        "label": "Uncategorized",
+        "color": "#6b7075",
+        "description": "Ideas without a recorded committee or a clear cross-cycle theme.",
+    },
 }
 
 COMMITTEE_TO_THEME = {
@@ -60,14 +84,70 @@ COMMITTEE_TO_THEME = {
 # free-text Project Status, and the Winning Project ID link.
 # ---------------------------------------------------------------------------
 OUTCOMES = {
-    "won":          {"label": "Inspired a winning project", "color": "#1a892b", "order": 1},
-    "ballot":       {"label": "Made the ballot", "color": "#2294d6", "order": 2},
-    "shortlist":    {"label": "Shortlisted", "color": "#b98f00", "order": 3},
-    "underway":     {"label": "Already underway by the City", "color": "#473e81", "order": 4},
-    "referred":     {"label": "Referred to City staff", "color": "#e6730f", "order": 5},
-    "not_advanced": {"label": "Not advanced", "color": "#6b7075", "order": 6},
-    "ineligible":   {"label": "Not eligible", "color": "#9b2743", "order": 7},
-    "review":       {"label": "No recorded outcome", "color": "#bcbcbc", "order": 8},
+    "ineligible": {
+        "label": "Not eligible",
+        "color": "#9b2743",
+        "order": 7,
+        "processOrder": 1,
+        "rank": 7,
+        "description": "Did not meet PB rules, such as capital funding, ownership, cost, or scope requirements.",
+    },
+    "referred": {
+        "label": "Referred to City staff",
+        "color": "#e6730f",
+        "order": 5,
+        "processOrder": 2,
+        "rank": 5,
+        "description": "Was directed to City staff or another process rather than continuing through PB.",
+    },
+    "underway": {
+        "label": "Already underway by the City",
+        "color": "#473e81",
+        "order": 4,
+        "processOrder": 3,
+        "rank": 4,
+        "description": "The need was already funded, planned, or being addressed by the City.",
+    },
+    "not_advanced": {
+        "label": "Not advanced",
+        "color": "#6b7075",
+        "order": 6,
+        "processOrder": 4,
+        "rank": 6,
+        "description": "Was reviewed but did not move forward to the shortlist.",
+    },
+    "shortlist": {
+        "label": "Shortlisted",
+        "color": "#b98f00",
+        "order": 3,
+        "processOrder": 5,
+        "rank": 3,
+        "description": "Was selected for further development or feasibility review but did not reach the ballot.",
+    },
+    "ballot": {
+        "label": "Made the ballot",
+        "color": "#2294d6",
+        "order": 2,
+        "processOrder": 6,
+        "rank": 2,
+        "description": "Helped shape a proposal that appeared on the PB ballot but did not win funding.",
+    },
+    "won": {
+        "label": "Inspired a winning project",
+        "color": "#1a892b",
+        "order": 1,
+        "processOrder": 7,
+        "rank": 1,
+        "description": "Helped shape a ballot proposal that won funding.",
+    },
+    "review": {
+        "label": "No recorded outcome",
+        "color": "#bcbcbc",
+        "order": 8,
+        "processOrder": 8,
+        "rank": 8,
+        "description": "The available data does not say where the idea ended in the PB process.",
+    },
 }
 
 WON_RE = re.compile(r"ultimately won|won funding|and won|winning project|inspired a winning")

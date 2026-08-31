@@ -17,6 +17,12 @@
   const cycleByNum = Object.fromEntries(meta.cycles.map((c) => [c.num, c]));
   const projById = {};
   for (const p of projects) if (p.id) projById[p.id] = p;
+  const BASEMAP_URL = "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png";
+  const BASEMAP_OPTIONS = {
+    maxZoom: 20,
+    attribution:
+      '&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+  };
 
   // Pre-computed lowercase haystack for fast search
   for (const i of ideas) {
@@ -90,7 +96,7 @@
           n: counts.theme[k],
         })),
       outcome: Object.entries(OUTCOMES)
-        .sort((a, b) => a[1].order - b[1].order)
+        .sort((a, b) => a[1].processOrder - b[1].processOrder)
         .map(([k, o]) => ({
           key: k,
           html: `<span class="swatch" style="background:${o.color}"></span>${esc(o.label)}`,
@@ -189,7 +195,7 @@
     const keys =
       chartMode === "theme"
         ? Object.keys(THEMES)
-        : Object.entries(OUTCOMES).sort((a, b) => a[1].order - b[1].order).map(([k]) => k);
+        : Object.entries(OUTCOMES).sort((a, b) => a[1].processOrder - b[1].processOrder).map(([k]) => k);
     // counts[cycle][key]
     const counts = {};
     for (const c of CYCLES) counts[c.num] = {};
@@ -284,12 +290,34 @@
     })
   );
 
+  // ---------- themes and outcomes guide ----------
+  const guideDialog = $("#guideDialog");
+  $("#themeGuide").innerHTML = Object.values(THEMES)
+    .map(
+      (theme) => `<div class="guide-item">
+        <i style="background:${theme.color}"></i>
+        <div><strong>${esc(theme.label)}</strong><p>${esc(theme.description || "")}</p></div>
+      </div>`
+    )
+    .join("");
+  $("#outcomeGuide").innerHTML = Object.values(OUTCOMES)
+    .sort((a, b) => a.processOrder - b.processOrder)
+    .map(
+      (outcome) => `<li class="${outcome.processOrder === 8 ? "unknown-outcome" : ""}">
+        <i style="background:${outcome.color}"></i>
+        <div><strong>${esc(outcome.label)}</strong><p>${esc(outcome.description || "")}</p></div>
+      </li>`
+    )
+    .join("");
+  $("#chartInfoBtn").addEventListener("click", () => guideDialog.showModal());
+  $("#guideClose").addEventListener("click", () => guideDialog.close());
+  guideDialog.addEventListener("click", (event) => {
+    if (event.target === guideDialog) guideDialog.close();
+  });
+
   // ---------- map ----------
   const map = L.map("map", { scrollWheelZoom: true }).setView([42.3765, -71.111], 13);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    maxZoom: 19,
-  }).addTo(map);
+  L.tileLayer(BASEMAP_URL, BASEMAP_OPTIONS).addTo(map);
   const cluster = L.layerGroup();
   map.addLayer(cluster);
   window.__map = map; // debug/testing handle
@@ -324,7 +352,7 @@
   const PAGE = 30;
   let shown = PAGE;
   let current = [];
-  const outcomeRank = Object.fromEntries(Object.entries(OUTCOMES).map(([k, o]) => [k, o.order]));
+  const outcomeRank = Object.fromEntries(Object.entries(OUTCOMES).map(([k, o]) => [k, o.rank ?? o.order]));
 
   function badgeHTML(i, compact) {
     const t = THEMES[i.theme], o = OUTCOMES[i.outcome];
@@ -432,7 +460,7 @@
     if (i.ll || (proj && proj.locations.length)) {
       if (drawerMap) drawerMap.remove();
       drawerMap = L.map("drawerMap", { scrollWheelZoom: false, dragging: !L.Browser.mobile });
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(drawerMap);
+      L.tileLayer(BASEMAP_URL, BASEMAP_OPTIONS).addTo(drawerMap);
       const pts = [];
       if (i.ll) {
         L.circleMarker(i.ll, { radius: 8, weight: 2, color: "#fff", fillColor: THEMES[i.theme].color, fillOpacity: 1 })
