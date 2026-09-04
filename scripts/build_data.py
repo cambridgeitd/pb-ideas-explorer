@@ -1,27 +1,38 @@
 #!/usr/bin/env python3
 """Build the JSON data files for the PB Ideas Explorer.
 
-Reads the raw CSVs in source-data/ (from Cambridge Open Data) and writes
-compact, normalized JSON to data/ for the static site:
+Ideas come from the published Cambridge Open Data dataset
+"Participatory Budgeting Ideas Submitted by Community Members" (54vd-wdqj),
+which is maintained by the annual PB ETL in the odp-etl-py project
+(proj/budget/pb). Ballot projects still come from the local CSVs in
+source-data/. Outputs:
 
   data/ideas.json     one record per submitted idea
   data/projects.json  one record per ballot project (with locations)
   data/meta.json      cycles, themes, outcomes, build info
 
-Refresh the raw ideas CSV from Cambridge Open Data with:
-  curl -L "https://data.cambridgema.gov/api/views/54vd-wdqj/rows.csv?accessType=DOWNLOAD" -o source-data/pb_ideas.csv
-Then run:
-  python scripts/build_data.py
+The Open Data export is cached at source-data/pb_ideas_open_data.csv and
+downloaded automatically on first run. After the annual ETL updates the
+portal, rebuild with:
+
+  python scripts/build_data.py --refresh
 """
+import argparse
 import csv
 import json
 import re
+import urllib.request
 from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "source-data"
 OUT = ROOT / "data"
+
+IDEAS_EXPORT_URL = (
+    "https://data.cambridgema.gov/api/views/54vd-wdqj/rows.csv?accessType=DOWNLOAD"
+)
+IDEAS_CACHE = SRC / "pb_ideas_open_data.csv"
 
 # ---------------------------------------------------------------------------
 # Themes: committee names changed across cycles; map them to stable themes.
@@ -245,10 +256,19 @@ def read_csv(path):
         return list(csv.DictReader(f))
 
 
-def read_idea_csvs():
-    # Keep the Open Data export first so existing deep-link IDs remain stable.
-    paths = [SRC / "pb_ideas.csv", *sorted(SRC.glob("pb[0-9]*_ideas.csv"))]
-    return [row for path in paths for row in read_csv(path)]
+def read_ideas(refresh=False):
+    """The published Open Data ideas export, in portal (= upload) row order.
+
+    Row order matters: idea deep-link IDs are row indexes. The annual ETL
+    uploads cycles in order, and the portal export preserves upload order.
+    """
+    if refresh or not IDEAS_CACHE.exists():
+        SRC.mkdir(exist_ok=True)
+        print(f"Downloading ideas from {IDEAS_EXPORT_URL} ...")
+        with urllib.request.urlopen(IDEAS_EXPORT_URL, timeout=300) as resp:
+            IDEAS_CACHE.write_bytes(resp.read())
+        print(f"Saved {IDEAS_CACHE} ({IDEAS_CACHE.stat().st_size/1024:.0f} KB)")
+    return read_csv(IDEAS_CACHE)
 
 
 def project_cycle(raw):
@@ -257,7 +277,12 @@ def project_cycle(raw):
 
 
 def main():
-    ideas_raw = read_idea_csvs()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--refresh", action="store_true",
+                        help="re-download the ideas export from Open Data")
+    args = parser.parse_args()
+
+    ideas_raw = read_ideas(refresh=args.refresh)
     projects_raw = read_csv(SRC / "pb_projects.csv")
     locations_raw = read_csv(SRC / "pb_project_locations.csv")
 

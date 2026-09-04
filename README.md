@@ -23,30 +23,34 @@ plain HTML/CSS/JS, it needs no R server and is hosted free on GitHub Pages.
 
 ## Data
 
-Raw data lives in `source-data/`:
+Ideas come straight from Cambridge Open Data:
+[Participatory Budgeting Ideas Submitted by Community Members](https://data.cambridgema.gov/Budget-Finance/Participatory-Budgeting-Ideas-Submitted-by-Communi/54vd-wdqj)
+(dataset `54vd-wdqj`, PB1–PB12). That dataset is maintained by the annual PB
+ETL in the City's internal `odp-etl-py` project (`proj/budget/pb`), which
+normalizes the Budget Office idea workbooks and replaces the portal dataset
+once a year when a PB cycle finishes.
+
+`scripts/build_data.py` downloads the portal export (cached at
+`source-data/pb_ideas_open_data.csv`, not committed) and combines it with two
+local Budget Office files that are not yet on the portal:
 
 | File | Source |
 |---|---|
-| `pb_ideas.csv` | [Participatory Budgeting Ideas](https://data.cambridgema.gov/Budget-Finance/Participatory-Budgeting-Ideas/54vd-wdqj) on Cambridge Open Data |
-| `pb11_ideas.xlsx` / `pb12_ideas.xlsx` | PB11 and PB12 idea exports from the Budget Office |
-| `pb11_ideas.csv` / `pb12_ideas.csv` | Normalized versions of the Budget Office workbooks |
 | `pb_projects.csv` | Ballot projects, results, and costs (Budget Office) |
 | `pb_project_locations.csv` | Locations of winning projects (Budget Office) |
 
-`scripts/import_idea_workbooks.py` normalizes the PB11 and PB12 workbooks. `scripts/build_data.py`
-combines those normalized files with the Open Data export and transforms everything into the
-compact JSON in `data/` that the site loads. The build also:
+The build transforms everything into the compact JSON in `data/` that the site loads. It also:
 
 - **Normalizes themes** — committee names changed nearly every cycle (17 variants), so they are mapped to six stable themes for cross-cycle comparison; the original committee name is preserved and shown in the detail view.
 - **Derives outcomes** — the `Idea Status` column is only populated for some cycles, so a rules-based classifier also reads the free-text `Project Status` staff notes to assign each idea one of eight outcome categories (inspired a winning project, made the ballot, shortlisted, already underway, referred to City staff, not advanced, not eligible, no recorded outcome).
 
 ### Refreshing the data
 
+Once a year, after the PB ETL (odp-etl-py `proj/budget/pb`) updates the Open
+Data dataset:
+
 ```sh
-curl -L "https://data.cambridgema.gov/api/views/54vd-wdqj/rows.csv?accessType=DOWNLOAD" -o source-data/pb_ideas.csv
-pip install -r requirements-import.txt
-python scripts/import_idea_workbooks.py
-python scripts/build_data.py
+python scripts/build_data.py --refresh
 ```
 
 Then commit and push — GitHub Pages redeploys automatically.
@@ -85,6 +89,6 @@ index.html            The site (single page)
 css/style.css         Styles (cambridgema.gov-inspired palette and type)
 js/app.js             All behavior: filters, chart, map, cards, drawer
 data/                 Generated JSON the site loads (do not edit by hand)
-scripts/build_data.py CSV → JSON pipeline (run after data updates)
-source-data/          Raw CSVs
+scripts/build_data.py Open Data + local CSVs → JSON pipeline (run after data updates)
+source-data/          Local project CSVs and the cached Open Data export (not committed)
 ```
