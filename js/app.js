@@ -17,11 +17,11 @@
   const cycleByNum = Object.fromEntries(meta.cycles.map((c) => [c.num, c]));
   const projById = {};
   for (const p of projects) if (p.id) projById[p.id] = p;
-  const BASEMAP_URL = "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png";
+  const BASEMAP_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
   const BASEMAP_OPTIONS = {
-    maxZoom: 20,
+    maxZoom: 19,
     attribution:
-      '&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
   };
 
   // Pre-computed lowercase haystack for fast search

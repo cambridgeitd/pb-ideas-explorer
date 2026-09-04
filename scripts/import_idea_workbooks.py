@@ -82,16 +82,40 @@ def normalize_pb11():
     return normalized
 
 
+# Corrections applied on top of the Budget Office PB12 workbook, reported to
+# Melissa on 2026-09-03. Remove once fixed at the source.
+PB12_ID_FIXES = {
+    # "School Supplies Campaign" has the status text in its ID cell; 734090 is
+    # the missing value in the surrounding submission-ID sequence.
+    ("Advanced to ballot", "School Supplies Campaign"): "734090",
+}
+PB12_TEXT_FIXES = {
+    ("732913", "Idea Status"): (
+        "Inspird a winning ballot project!",
+        "Inspired a winning ballot project!",
+    ),
+    ("732913", "Project Status"): (
+        "A proposal for concrete barriers for bike lanes made it to the ballot "
+        "nad won funding through the vote!",
+        "A proposal for concrete barriers for bike lanes made it to the ballot "
+        "and won funding through the vote!",
+    ),
+}
+
+
 def normalize_pb12():
     workbook = load_workbook(PB12_WORKBOOK, read_only=True, data_only=True)
     normalized = []
     for row in sheet_rows(workbook, "PB12 Final"):
-        normalized.append({
+        ref = idea_ref(row.get("Idea #"))
+        title = text(row.get("Project Title"))
+        ref = PB12_ID_FIXES.get((ref, title), ref)
+        record = {
             "PB Cycle": "12",
             "Date Range": "September 2025-March 2026",
-            "Idea #": idea_ref(row.get("Idea #")),
+            "Idea #": ref,
             "Committee": text(row.get("Committee")),
-            "Project Title": text(row.get("Project Title")),
+            "Project Title": title,
             "Project Description": text(row.get("Project Description")),
             "Project Status": text(row.get("Project Status Description")),
             "Idea Submitter": text(row.get("Idea Submitter")),
@@ -101,7 +125,11 @@ def normalize_pb12():
             "Winning Project ID": text(row.get("Winning Project ID")),
             "Idea Status": text(row.get("Idea Status")),
             "Link to Other Information": text(row.get("Link to Other Information")),
-        })
+        }
+        for (fix_ref, field), (old, new) in PB12_TEXT_FIXES.items():
+            if ref == fix_ref and record[field] == old:
+                record[field] = new
+        normalized.append(record)
     return normalized
 
 
