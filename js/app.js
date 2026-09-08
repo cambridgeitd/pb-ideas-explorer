@@ -15,8 +15,11 @@
   const OUTCOMES = meta.outcomes;
   const CYCLES = meta.cycles.filter((c) => ideas.some((i) => i.cycle === c.num));
   const cycleByNum = Object.fromEntries(meta.cycles.map((c) => [c.num, c]));
-  const projById = {};
-  for (const p of projects) if (p.id) projById[p.id] = p;
+  const projById = Object.create(null);
+  for (const p of projects) {
+    if (p.id) projById[p.id] = p;
+    for (const alias of p.aliases || []) projById[alias] = p;
+  }
   const BASEMAP_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
   const BASEMAP_OPTIONS = {
     maxZoom: 19,

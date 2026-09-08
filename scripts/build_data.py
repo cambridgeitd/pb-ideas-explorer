@@ -1,38 +1,54 @@
 #!/usr/bin/env python3
 """Build the JSON data files for the PB Ideas Explorer.
 
-Ideas come from the published Cambridge Open Data dataset
-"Participatory Budgeting Ideas Submitted by Community Members" (54vd-wdqj),
-which is maintained by the annual PB ETL in the odp-etl-py project
-(proj/budget/pb). Ballot projects still come from the local CSVs in
-source-data/. Outputs:
+Ideas (54vd-wdqj) and ballot projects (uhwd-9y6q) come from published
+Cambridge Open Data datasets maintained by the annual PB ETL in the
+odp-etl-py project (proj/budget/pb). Outputs:
 
   data/ideas.json     one record per submitted idea
   data/projects.json  one record per ballot project (with locations)
   data/meta.json      cycles, themes, outcomes, build info
 
-The Open Data export is cached at source-data/pb_ideas_open_data.csv and
-downloaded automatically on first run. After the annual ETL updates the
-portal, rebuild with:
+The Open Data exports are cached in source-data/ and downloaded
+automatically on first run. After the annual ETL updates the portal,
+rebuild with:
 
   python scripts/build_data.py --refresh
 """
 import argparse
 import csv
+import io
 import json
+import math
 import re
 import urllib.request
 from datetime import date
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "source-data"
 OUT = ROOT / "data"
 
-IDEAS_EXPORT_URL = (
-    "https://data.cambridgema.gov/api/views/54vd-wdqj/rows.csv?accessType=DOWNLOAD"
-)
 IDEAS_CACHE = SRC / "pb_ideas_open_data.csv"
+PROJECTS_CACHE = SRC / "pb_projects_open_data.csv"
+IDEA_COLUMNS = {
+    "PB Cycle", "Idea #", "Committee", "Project Title", "Project Description",
+    "Project Status", "Location", "Latitude", "Longitude", "Winning Project ID",
+    "Idea Status", "Link to Other Information",
+}
+PROJECT_COLUMNS = {
+    "PB Cycle", "Project", "Winning Project ID", "Total Votes", "Winning project",
+    "Project Cost", "Location Description", "Short Project Description",
+    "Project ID Aliases", "Project Locations",
+}
+
+# Melissa changed these committee-specific IDs from decimals to dash suffixes.
+IDEA_REF_RENAMES = {
+    ("12", "729279.5"): "729279-2",
+    ("12", "733619.5"): "733619-2",
+    ("12", "734068.5"): "734068-2",
+}
 
 # ---------------------------------------------------------------------------
 # Themes: committee names changed across cycles; map them to stable themes.
@@ -251,63 +267,127 @@ def num(text):
         return None
 
 
-def read_csv(path):
-    with open(path, encoding="utf-8-sig", newline="") as f:
-        return list(csv.DictReader(f))
+def parse_export(content, required_columns):
+    reader = csv.DictReader(io.StringIO(content.decode("utf-8-sig"), newline=""))
+    missing = required_columns - set(reader.fieldnames or [])
+    if missing:
+        raise ValueError(f"Open Data export is missing columns: {sorted(missing)}")
+    rows = list(reader)
+    if not rows or any(None in row or any(v is None for v in row.values()) for row in rows):
+        raise ValueError("Open Data export is empty or contains malformed rows")
+    return rows
 
 
-def read_ideas(refresh=False):
-    """The published Open Data ideas export, in portal (= upload) row order.
-
-    Row order matters: idea deep-link IDs are row indexes. The annual ETL
-    uploads cycles in order, and the portal export preserves upload order.
-    """
-    if refresh or not IDEAS_CACHE.exists():
-        SRC.mkdir(exist_ok=True)
-        print(f"Downloading ideas from {IDEAS_EXPORT_URL} ...")
-        with urllib.request.urlopen(IDEAS_EXPORT_URL, timeout=300) as resp:
-            IDEAS_CACHE.write_bytes(resp.read())
-        print(f"Saved {IDEAS_CACHE} ({IDEAS_CACHE.stat().st_size/1024:.0f} KB)")
-    return read_csv(IDEAS_CACHE)
+def read_export(dataset_id, cache, required_columns, refresh=False):
+    if not refresh and cache.exists():
+        return parse_export(cache.read_bytes(), required_columns)
+    url = f"https://data.cambridgema.gov/api/views/{dataset_id}/rows.csv?accessType=DOWNLOAD"
+    print(f"Downloading {dataset_id} from Open Data ...")
+    with urllib.request.urlopen(url, timeout=300) as response:
+        content = response.read()
+    rows = parse_export(content, required_columns)
+    cache.parent.mkdir(exist_ok=True)
+    temporary = cache.with_suffix(".csv.tmp")
+    temporary.write_bytes(content)
+    temporary.replace(cache)
+    print(f"Saved {cache.name}: {len(rows)} rows")
+    return rows
 
 
 def project_cycle(raw):
-    m = re.search(r"Cycle\s*(\d+)", raw)
+    m = re.fullmatch(r"([1-9]\d*)(?:\.0+)?", raw.strip()) or re.search(r"Cycle\s*([1-9]\d*)", raw)
     return m.group(1) if m else None
+
+
+def integer_or_none(raw):
+    if not raw.strip():
+        return None
+    try:
+        value = Decimal(raw)
+    except InvalidOperation as error:
+        raise ValueError(f"Invalid project number: {raw!r}") from error
+    if not value.is_finite() or value < 0 or value != value.to_integral_value():
+        raise ValueError(f"Expected a nonnegative integer, got {raw!r}")
+    return int(value)
+
+
+def build_projects(projects_raw):
+    projects = []
+    for r in projects_raw:
+        cyc = project_cycle(r["PB Cycle"])
+        pid = r["Winning Project ID"].strip()
+        if not cyc or not r["Project"].strip() or r["Winning project"].strip().lower() not in {"yes", "no"}:
+            raise ValueError(f"Invalid ballot project: {r['Project']!r}")
+        aliases = json.loads(r["Project ID Aliases"])
+        if not isinstance(aliases, list) or any(
+            not isinstance(alias, str) or not re.fullmatch(rf"PB{cyc}_\d+(?:_\d+)?", alias)
+            for alias in aliases
+        ):
+            raise ValueError(f"Invalid project aliases for {r['Project']!r}")
+        if len(aliases) != len(set(aliases)) or (pid and pid not in aliases):
+            raise ValueError(f"Missing primary ID or duplicate aliases for {r['Project']!r}")
+        locations = json.loads(r["Project Locations"])
+        if not isinstance(locations, list):
+            raise ValueError(f"Invalid locations for {r['Project']!r}")
+        for point in locations:
+            if (
+                not isinstance(point, list) or len(point) != 2
+                or any(type(v) not in (int, float) or not math.isfinite(v) for v in point)
+                or not -90 <= point[0] <= 90 or not -180 <= point[1] <= 180
+            ):
+                raise ValueError(f"Invalid coordinates for {r['Project']!r}: {point!r}")
+        projects.append({
+            "id": pid or None,
+            "aliases": aliases,
+            "cycle": cyc,
+            "name": r["Project"].strip(),
+            "votes": integer_or_none(r["Total Votes"]),
+            "won": r["Winning project"].strip().lower() == "yes",
+            "cost": integer_or_none(r["Project Cost"]),
+            "locationText": r["Location Description"].strip(),
+            "desc": r["Short Project Description"].strip(),
+            "locations": [[round(lat, 6), round(lng, 6)] for lat, lng in locations],
+        })
+    return projects
+
+
+def validate_project_links(ideas, projects):
+    by_id = {}
+    for project in projects:
+        for alias in project["aliases"]:
+            if alias in by_id:
+                raise ValueError(f"Project ID identifies multiple ballot projects: {alias}")
+            by_id[alias] = project
+    for idea in ideas:
+        if not idea["win"]:
+            continue
+        project = by_id.get(idea["win"])
+        if not project or project["cycle"] != idea["cycle"] or not project["won"]:
+            raise ValueError(f"PB{idea['cycle']} idea {idea['ref']} has invalid winning project ID: {idea['win']}")
+
+
+def validate_idea_order(previous, current):
+    """Do not silently change the meaning of existing positional deep links."""
+    if len(current) < len(previous):
+        raise ValueError("Ideas were removed; reconcile existing deep links before rebuilding")
+    for old, new in zip(previous, current):
+        expected_ref = IDEA_REF_RENAMES.get((old["cycle"], old["ref"]), old["ref"])
+        if (
+            (old["id"], old["cycle"]) != (new["id"], new["cycle"])
+            or new["ref"] not in {old["ref"], expected_ref}
+        ):
+            raise ValueError(f"Idea order changed at ID {old['id']}; reconcile deep links before rebuilding")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--refresh", action="store_true",
-                        help="re-download the ideas export from Open Data")
+                        help="re-download both ideas and ballot projects from Open Data")
     args = parser.parse_args()
 
-    ideas_raw = read_ideas(refresh=args.refresh)
-    projects_raw = read_csv(SRC / "pb_projects.csv")
-    locations_raw = read_csv(SRC / "pb_project_locations.csv")
-
-    locs_by_id = {}
-    for r in locations_raw:
-        pid = r["Winning Project ID"].strip()
-        lat, lng = num(r["Latitude"]), num(r["Longitude"])
-        if pid and lat is not None and lng is not None:
-            locs_by_id.setdefault(pid, []).append([round(lat, 6), round(lng, 6)])
-
-    projects = []
-    for r in projects_raw:
-        cyc = project_cycle(r["PB Cycle"])
-        pid = r["Winning Project ID"].strip()
-        projects.append({
-            "id": pid or None,
-            "cycle": cyc,
-            "name": r["Project"].strip(),
-            "votes": int(v) if (v := r["Total Votes"].strip()) and v.isdigit() else None,
-            "won": r["Winning project"].strip().lower() == "yes",
-            "cost": int(c) if (c := r["Project Cost"].strip()) and c.isdigit() else None,
-            "locationText": r["Location Description"].strip(),
-            "desc": r["Short Project Description"].strip(),
-            "locations": locs_by_id.get(pid, []),
-        })
+    ideas_raw = read_export("54vd-wdqj", IDEAS_CACHE, IDEA_COLUMNS, args.refresh)
+    projects_raw = read_export("uhwd-9y6q", PROJECTS_CACHE, PROJECT_COLUMNS, args.refresh)
+    projects = build_projects(projects_raw)
 
     ideas = []
     for i, r in enumerate(ideas_raw):
@@ -334,6 +414,11 @@ def main():
         }
         ideas.append(rec)
 
+    validate_project_links(ideas, projects)
+    previous_path = OUT / "ideas.json"
+    if previous_path.exists():
+        validate_idea_order(json.loads(previous_path.read_text(encoding="utf-8")), ideas)
+
     cycles_present = sorted({i["cycle"] for i in ideas} | {p["cycle"] for p in projects if p["cycle"]}, key=int)
     meta = {
         "built": date.today().isoformat(),
@@ -349,7 +434,7 @@ def main():
     OUT.mkdir(exist_ok=True)
     for name, obj in [("ideas.json", ideas), ("projects.json", projects), ("meta.json", meta)]:
         p = OUT / name
-        p.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        p.write_text(json.dumps(obj, ensure_ascii=False, allow_nan=False, separators=(",", ":")), encoding="utf-8")
         print(f"{name}: {p.stat().st_size/1024:.0f} KB")
 
     from collections import Counter

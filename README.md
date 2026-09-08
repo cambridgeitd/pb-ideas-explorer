@@ -23,21 +23,25 @@ plain HTML/CSS/JS, it needs no R server and is hosted free on GitHub Pages.
 
 ## Data
 
-Ideas come straight from Cambridge Open Data:
-[Participatory Budgeting Ideas Submitted by Community Members](https://data.cambridgema.gov/Budget-Finance/Participatory-Budgeting-Ideas-Submitted-by-Communi/54vd-wdqj)
-(dataset `54vd-wdqj`, PB1–PB12). That dataset is maintained by the annual PB
-ETL in the City's internal `odp-etl-py` project (`proj/budget/pb`), which
-normalizes the Budget Office idea workbooks and replaces the portal dataset
-once a year when a PB cycle finishes.
+Ideas and ballot projects come straight from Cambridge Open Data. Both
+datasets are maintained by the annual PB ETL in the City's internal
+`odp-etl-py` project (`proj/budget/pb`), which normalizes the Budget Office
+workbooks and publishes updates when a PB cycle finishes.
 
-`scripts/build_data.py` downloads the portal export (cached at
-`source-data/pb_ideas_open_data.csv`, not committed) and combines it with two
-local Budget Office files that are not yet on the portal:
+`scripts/build_data.py` downloads complete exports at build time and caches
+them in the gitignored `source-data/` directory:
 
-| File | Source |
+| Cache | Source |
 |---|---|
-| `pb_projects.csv` | Ballot projects, results, and costs (Budget Office) |
-| `pb_project_locations.csv` | Locations of winning projects (Budget Office) |
+| `pb_ideas_open_data.csv` | [Ideas, PB1–PB12 (`54vd-wdqj`)](https://data.cambridgema.gov/d/54vd-wdqj) |
+| `pb_projects_open_data.csv` | [Ballot projects, PB1–PB12 (`uhwd-9y6q`)](https://data.cambridgema.gov/d/uhwd-9y6q) |
+
+No raw workbooks or private ETL checkout are needed to build the viewer.
+The projects export has one row per ballot project. `Project ID Aliases`
+and `Project Locations` are JSON arrays in text columns, preserving
+multi-location links without counting a project's votes or cost repeatedly.
+Unknown/TBD project locations remain empty; no map coordinates are invented.
+Submitter names are never included in the viewer's JSON.
 
 The build transforms everything into the compact JSON in `data/` that the site loads. It also:
 
@@ -47,13 +51,20 @@ The build transforms everything into the compact JSON in `data/` that the site l
 ### Refreshing the data
 
 Once a year, after the PB ETL (odp-etl-py `proj/budget/pb`) updates the Open
-Data dataset:
+Data datasets:
 
 ```sh
 python scripts/build_data.py --refresh
 ```
 
 Then commit and push — GitHub Pages redeploys automatically.
+
+Without `--refresh`, the build reuses cached exports (and downloads any
+missing cache). Visitors load only static JSON, never Socrata. Invalid exports,
+unresolved winning-project links, and unexpected changes to existing idea order
+stop the build instead of silently breaking the site. The three PB12 idea IDs
+changed from `.5` to `-2` are explicitly allowed, retaining their existing
+numeric deep links.
 
 ## Development
 
@@ -89,6 +100,6 @@ index.html            The site (single page)
 css/style.css         Styles (cambridgema.gov-inspired palette and type)
 js/app.js             All behavior: filters, chart, map, cards, drawer
 data/                 Generated JSON the site loads (do not edit by hand)
-scripts/build_data.py Open Data + local CSVs → JSON pipeline (run after data updates)
-source-data/          Local project CSVs and the cached Open Data export (not committed)
+scripts/build_data.py Open Data exports → JSON pipeline (run after data updates)
+source-data/          Cached exports and retained legacy inputs (not committed)
 ```
