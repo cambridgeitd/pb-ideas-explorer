@@ -483,6 +483,16 @@
     const p = new URLSearchParams(location.search);
     p.set("idea", i.id);
     history.replaceState(null, "", "?" + p.toString());
+    if (typeof window.gtag === "function") {
+      window.gtag("event", "view_idea", {
+        send_to: "G-81F2NCLW2S",
+        idea_index: i.id,
+        pb_cycle: Number(i.cycle),
+        idea_ref: i.ref,
+        page_location: location.origin + location.pathname,
+        page_referrer: document.referrer.split(/[?#]/)[0],
+      });
+    }
   }
   window.__openIdea = openDrawer;
 

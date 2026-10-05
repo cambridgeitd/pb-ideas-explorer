@@ -74,12 +74,34 @@ No build step for the site itself. Serve the folder and open it:
 python -m http.server 8000
 ```
 
+### Analytics
+
+Google Analytics 4 uses the City's existing **shinyapps/viz** property,
+measurement ID **`G-81F2NCLW2S`** (not the Socrata stream). The async Google tag
+initializes once per page load. Opening an idea drawer, including through a
+deep link, sends `view_idea` with `idea_index`, `pb_cycle`, and the public
+`idea_ref`. No submitter, idea content, or search text is included in this
+custom event; its page URL and referrer omit query strings and fragments.
+The viewer does not wait for Analytics and still works when it is blocked.
+There is no hostname-specific configuration to change for the custom domain.
+
+**Page-view caveat:** the app does not manually send page views or reconfigure
+the tag on filter changes. However, GA4 Enhanced Measurement can automatically
+count our `history.replaceState` calls as page views.
+[Google documents that `send_page_view: false` does not disable those history events](https://developers.google.com/analytics/devguides/collection/ga4/views#disable_page_changes_based_on_browser_history_events).
+Justin (or another property Editor) must untick **Page changes based on browser
+history events** under the stream's Enhanced Measurement > Page views advanced
+settings to reliably count only document loads. Until then, Views may include
+filter/drawer changes; use `view_idea` for explicit idea opens. Automatic
+Enhanced Measurement events (including site search) are controlled by that
+shared stream's settings, separately from this site's custom event.
+
+Run the Analytics regression checks with `node --test scripts/test_analytics.cjs`.
+
 ### Map tiles
 
-The explorer uses [Stadia Maps Alidade Smooth](https://docs.stadiamaps.com/map-styles/alidade-smooth/)
-for its quiet, marker-friendly basemap. Localhost works without credentials. For production,
-register `cambridgeitd.github.io` as an authorized domain in the Stadia Maps client dashboard;
-domain authentication avoids storing an API key in this public repository.
+The explorer uses [OpenStreetMap](https://www.openstreetmap.org/) tiles with
+attribution. No API key or hostname allowlist is required.
 
 ## Data wishlist — to take this to the next level
 
