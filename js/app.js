@@ -29,11 +29,11 @@
 
   // Pre-computed lowercase haystack for fast search
   for (const i of ideas) {
-    i._hay = (i.title + " " + i.desc + " " + i.location).toLowerCase();
+    i._hay = (i.title + " " + i.desc + " " + i.location + " " + (i.impact || "")).toLowerCase();
   }
 
   // ---------- state ----------
-  const state = { q: "", cycles: new Set(), themes: new Set(), outcomes: new Set() };
+  const state = { q: "", cycles: new Set(), committees: new Set(), themes: new Set(), outcomes: new Set() };
   const $ = (s) => document.querySelector(s);
   const esc = (s) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -51,6 +51,7 @@
     const p = new URLSearchParams(location.search);
     state.q = p.get("q") || "";
     state.cycles = new Set((p.get("cycle") || "").split(",").filter(Boolean));
+    state.committees = new Set(p.getAll("committee").filter(Boolean));
     state.themes = new Set((p.get("theme") || "").split(",").filter(Boolean));
     state.outcomes = new Set((p.get("outcome") || "").split(",").filter(Boolean));
     return p.get("idea");
@@ -59,6 +60,7 @@
     const p = new URLSearchParams();
     if (state.q) p.set("q", state.q);
     if (state.cycles.size) p.set("cycle", [...state.cycles].join(","));
+    for (const committee of state.committees) p.append("committee", committee);
     if (state.themes.size) p.set("theme", [...state.themes].join(","));
     if (state.outcomes.size) p.set("outcome", [...state.outcomes].join(","));
     const qs = p.toString();
@@ -70,6 +72,7 @@
     const terms = q ? q.split(/\s+/) : [];
     return ideas.filter((i) => {
       if (state.cycles.size && !state.cycles.has(i.cycle)) return false;
+      if (state.committees.size && !state.committees.has(i.committee)) return false;
       if (state.themes.size && !state.themes.has(i.theme)) return false;
       if (state.outcomes.size && !state.outcomes.has(i.outcome)) return false;
       if (terms.length && !terms.every((t) => i._hay.includes(t))) return false;
@@ -79,9 +82,10 @@
 
   // ---------- dropdown filters ----------
   function buildDropdowns() {
-    const counts = { cycle: {}, theme: {}, outcome: {} };
+    const counts = { cycle: {}, committee: {}, theme: {}, outcome: {} };
     for (const i of ideas) {
       counts.cycle[i.cycle] = (counts.cycle[i.cycle] || 0) + 1;
+      if (i.committee) counts.committee[i.committee] = (counts.committee[i.committee] || 0) + 1;
       counts.theme[i.theme] = (counts.theme[i.theme] || 0) + 1;
       counts.outcome[i.outcome] = (counts.outcome[i.outcome] || 0) + 1;
     }
@@ -91,6 +95,11 @@
         html: `${c.label} <small>${esc(c.dates)}</small>`,
         n: counts.cycle[c.num] || 0,
       })).reverse(),
+      committee: Object.keys(counts.committee).sort((a, b) => a.localeCompare(b)).map((name) => ({
+        key: name,
+        html: esc(name),
+        n: counts.committee[name],
+      })),
       theme: Object.entries(THEMES)
         .filter(([k]) => counts.theme[k])
         .map(([k, t]) => ({
@@ -112,7 +121,7 @@
       menu.innerHTML = defs[kind]
         .map(
           (d) =>
-            `<button class="dd-item" data-key="${d.key}" role="menuitemcheckbox">
+            `<button class="dd-item" data-key="${esc(d.key)}" role="menuitemcheckbox" aria-checked="false">
               <span class="box">✓</span>${d.html}<span class="n">${d.n.toLocaleString()}</span>
             </button>`
         )
@@ -122,6 +131,7 @@
         const was = dd.classList.contains("open");
         closeDropdowns();
         dd.classList.toggle("open", !was);
+        dd.querySelector(".dd-btn").setAttribute("aria-expanded", String(!was));
       });
       menu.addEventListener("click", (e) => {
         const item = e.target.closest(".dd-item");
@@ -135,14 +145,30 @@
     document.addEventListener("click", closeDropdowns);
   }
   function closeDropdowns() {
-    document.querySelectorAll(".dd.open").forEach((d) => d.classList.remove("open"));
+    document.querySelectorAll(".dd.open").forEach((d) => {
+      d.classList.remove("open");
+      d.querySelector(".dd-btn").setAttribute("aria-expanded", "false");
+    });
   }
   function syncDropdowns() {
+    const committeeCounts = {};
+    for (const idea of ideas) {
+      if (!state.cycles.size || state.cycles.has(idea.cycle)) {
+        committeeCounts[idea.committee] = (committeeCounts[idea.committee] || 0) + 1;
+      }
+    }
     for (const dd of document.querySelectorAll(".dd")) {
       const set = state[dd.dataset.dd + "s"];
-      dd.querySelectorAll(".dd-item").forEach((it) =>
-        it.classList.toggle("checked", set.has(it.dataset.key))
-      );
+      dd.querySelectorAll(".dd-item").forEach((it) => {
+        const selected = set.has(it.dataset.key);
+        it.classList.toggle("checked", selected);
+        it.setAttribute("aria-checked", String(selected));
+        if (dd.dataset.dd === "committee") {
+          const count = committeeCounts[it.dataset.key] || 0;
+          it.hidden = !count && !selected;
+          it.querySelector(".n").textContent = count.toLocaleString();
+        }
+      });
       dd.querySelector(".dd-count").textContent = set.size ? set.size : "";
     }
   }
@@ -154,6 +180,8 @@
       chips.push(`<button class="chip search-chip" data-kind="q">“${esc(state.q.trim())}” <span class="x">✕</span></button>`);
     for (const c of state.cycles)
       chips.push(`<button class="chip" data-kind="cycles" data-key="${c}">${cycleByNum[c]?.label || "PB" + c} <span class="x">✕</span></button>`);
+    for (const committee of state.committees)
+      chips.push(`<button class="chip" data-kind="committees" data-key="${esc(committee)}">${esc(committee)} <span class="x">✕</span></button>`);
     for (const t of state.themes)
       chips.push(`<button class="chip" data-kind="themes" data-key="${t}" style="background:${THEMES[t].color}">${esc(THEMES[t].label)} <span class="x">✕</span></button>`);
     for (const o of state.outcomes)
@@ -176,6 +204,7 @@
     state.q = "";
     $("#search").value = "";
     state.cycles.clear();
+    state.committees.clear();
     state.themes.clear();
     state.outcomes.clear();
     update();
@@ -213,7 +242,7 @@
     const values = CYCLES.map((c, ci) => (pct ? (totals[ci] / cycleTotalsAll[c.num]) * 100 : totals[ci]));
     const max = Math.max(pct ? 0.0001 : 1, ...values);
     const hasFilters =
-      state.q.trim() || state.cycles.size || state.themes.size || state.outcomes.size;
+      state.q.trim() || state.cycles.size || state.committees.size || state.themes.size || state.outcomes.size;
     $("#chartHint").textContent = !pct
       ? "Each bar is one PB cycle — click a bar to filter to that cycle."
       : hasFilters
@@ -363,6 +392,8 @@
       <span class="badge"><span class="dot" style="background:${t.color}"></span>${esc(t.label)}</span>`;
     if (i.outcome !== "review")
       h += `<span class="badge outcome-badge" style="background:${o.color}">${esc(o.label)}</span>`;
+    if (!compact && i.committee)
+      h += `<span class="badge committee-badge">${esc(i.committee)}</span>`;
     if (!compact && i.location)
       h += `<span class="badge loc-badge">📍 ${esc(i.location.split("\n")[0].slice(0, 60))}</span>`;
     return h;
@@ -431,6 +462,8 @@
     let html = `<div class="badges">${badgeHTML(i, true)}</div>
       <h2 id="drawerTitle">${esc(i.title)}</h2>
       <div class="drawer-sec"><h3>Idea</h3><p>${esc(i.desc) || "<em>No description recorded.</em>"}</p></div>`;
+    if (i.impact)
+      html += `<div class="drawer-sec desired-impact"><h3>Desired impact</h3><p>${esc(i.impact)}</p></div>`;
     if (i.status && i.status.toLowerCase() !== "to be determined")
       html += `<div class="drawer-sec"><h3>What happened</h3><div class="status-quote">${esc(i.status)}</div></div>`;
     else
@@ -527,6 +560,7 @@
     syncDropdowns();
     renderChips();
     const rows = filtered();
+    $("#reviewNote").hidden = !rows.some((i) => i.outcome === "in_review");
     $("#resultCount").textContent = `${rows.length.toLocaleString()} of ${ideas.length.toLocaleString()} ideas`;
     renderChart(rows);
     renderMap(rows);

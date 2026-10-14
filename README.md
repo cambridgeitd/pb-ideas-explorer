@@ -1,6 +1,6 @@
 # PB Ideas Explorer
 
-**Live site: https://cambridgeitd.github.io/pb-ideas-explorer/**
+**Live site: https://pb-ideas-explorer.data.cambridgema.gov/**
 
 A static, no-server explorer for every idea Cambridge residents have submitted through
 [Participatory Budgeting](https://www.cambridgema.gov/participatorybudgeting) since 2014.
@@ -14,11 +14,11 @@ plain HTML/CSS/JS, it needs no R server and is hosted free on GitHub Pages.
 
 ## Features
 
-- **Full-text search** across 11,000+ idea titles, descriptions, and locations, with term highlighting
-- **Filters** by PB cycle, theme, and outcome — combined, shown as removable chips, and mirrored to the URL so any view is shareable/bookmarkable
+- **Full-text search** across 12,000+ idea titles, descriptions, locations, and desired impacts
+- **Filters** by PB cycle, original committee, theme, and outcome — combined, shown as removable chips, and mirrored to the URL so any view is shareable/bookmarkable
 - **Ideas-over-time chart**, stacked by theme or outcome; clicking a bar filters to that cycle
 - **Plain-language category guide** explaining the normalized themes and the chronological PB outcome stages
-- **Clustered map** of the ~5,700 geocoded ideas, colored by theme
+- **Map** of ideas with supplied coordinates, colored by theme
 - **Card list** (replacing the old data table) with a detail drawer showing the full description, staff outcome notes, a mini-map, and — when the idea inspired a winning ballot project — that project's votes, cost, and locations
 
 ## Data
@@ -33,7 +33,7 @@ them in the gitignored `source-data/` directory:
 
 | Cache | Source |
 |---|---|
-| `pb_ideas_open_data.csv` | [Ideas, PB1–PB12 (`54vd-wdqj`)](https://data.cambridgema.gov/d/54vd-wdqj) |
+| `pb_ideas_open_data.csv` | [Ideas, PB1–PB13 (`54vd-wdqj`)](https://data.cambridgema.gov/d/54vd-wdqj) |
 | `pb_projects_open_data.csv` | [Ballot projects, PB1–PB12 (`uhwd-9y6q`)](https://data.cambridgema.gov/d/uhwd-9y6q) |
 
 No raw workbooks or private ETL checkout are needed to build the viewer.
@@ -45,8 +45,30 @@ Submitter names are never included in the viewer's JSON.
 
 The build transforms everything into the compact JSON in `data/` that the site loads. It also:
 
-- **Normalizes themes** — committee names changed nearly every cycle (17 variants), so they are mapped to six stable themes for cross-cycle comparison; the original committee name is preserved and shown in the detail view.
-- **Derives outcomes** — the `Idea Status` column is only populated for some cycles, so a rules-based classifier also reads the free-text `Project Status` staff notes to assign each idea one of eight outcome categories (inspired a winning project, made the ballot, shortlisted, already underway, referred to City staff, not advanced, not eligible, no recorded outcome).
+- **Normalizes themes** — committee names changed nearly every cycle, so they are mapped to six stable themes for cross-cycle comparison; the original committee name is preserved, displayed, and directly filterable.
+- **Derives outcomes** — the `Idea Status` column is only populated for some cycles, so a rules-based classifier also reads the free-text `Project Status` staff notes. Active review is distinct from completed outcomes and from missing historical outcomes.
+
+### PB13 delegate review
+
+PB13 covers August 2026–March 2027 and adds 1,145 committee-review entries,
+appended after the existing 11,529 records. Its source status, `In review by PB13
+Delegates`, is shown as **Being reviewed by volunteer Cambridge residents**,
+not as a missing or final outcome. Original notes remain visible. There are no
+PB13 ballot projects yet.
+
+Select PB13 using the Cycle filter, then select an exact Committee. Committee
+choices/counts reflect the selected cycles; repeated `committee` URL parameters
+keep names containing commas and ampersands intact. Six ideas are cross-listed
+under two committees, so PB13's 1,145 entries represent 1,139 distinct idea IDs.
+They stay separate for committee review and retain separate numeric deep links.
+
+The new `Desired Impact` text is searchable and shown in the drawer when
+provided. Seven placeholder-ID entries lack coordinates and remain list-only;
+the other supplied coordinates, including the point just outside Cambridge,
+are used as received. No locations are guessed or removed by a city-boundary
+filter. The chart's percentages describe shares of submissions, not success
+rates; it shows active review separately and the site calculates no
+won/eligibility rates.
 
 ### Refreshing the data
 

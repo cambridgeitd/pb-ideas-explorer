@@ -139,6 +139,41 @@ class DeepLinkTests(unittest.TestCase):
 
 
 class BuildTests(unittest.TestCase):
+    def test_pb13_appends_crosslisted_ideas_and_preserves_impact(self):
+        historical = {column: "" for column in build.IDEA_COLUMNS}
+        historical.update({"PB Cycle": "12", "Idea #": "old", "Committee": "Community Resources"})
+        pb13 = {column: "" for column in build.IDEA_COLUMNS}
+        pb13.update({
+            "PB Cycle": "13", "Idea #": "757393", "Committee": "Facilities, Parks & Recreation",
+            "Project Title": "New proposal", "Project Status": "In review by PB13 Delegates",
+            "Desired Impact": "Safer paths\r\nfor all", "Latitude": "42.37", "Longitude": "-71.11",
+        })
+        crosslisted = {**pb13, "Committee": "Transportation, Streets, and Sidewalks"}
+        unmapped = {**pb13, "Idea #": "700000", "Latitude": "", "Longitude": "", "Desired Impact": ""}
+        with TemporaryDirectory() as directory:
+            output = Path(directory)
+            (output / "ideas.json").write_text(json.dumps([{"id": 0, "cycle": "12", "ref": "old"}]))
+            with (
+                patch.object(build, "OUT", output),
+                patch.object(build, "read_export", side_effect=[
+                    [historical, pb13, crosslisted, unmapped], [project_row()],
+                ]),
+                patch("sys.argv", ["build_data.py"]),
+            ):
+                build.main()
+            ideas = json.loads((output / "ideas.json").read_text(encoding="utf-8"))
+            meta = json.loads((output / "meta.json").read_text(encoding="utf-8"))
+            self.assertEqual([i["id"] for i in ideas], [0, 1, 2, 3])
+            self.assertEqual([i["theme"] for i in ideas[1:3]], ["parks", "streets"])
+            self.assertEqual([i["ref"] for i in ideas[1:3]], ["757393", "757393"])
+            self.assertTrue(all(i["outcome"] == "in_review" and i["win"] is None for i in ideas[1:]))
+            self.assertEqual(ideas[1]["impact"], "Safer paths\nfor all")
+            self.assertNotIn("impact", ideas[0])
+            self.assertNotIn("impact", ideas[3])
+            self.assertIsNone(ideas[3]["ll"])
+            self.assertEqual(ideas[1]["ll"], [42.37, -71.11])
+            self.assertEqual(meta["cycles"][-1], {"num": "13", **build.CYCLE_META["13"]})
+
     def test_build_uses_both_public_exports_and_omits_submitter(self):
         idea = {column: "" for column in build.IDEA_COLUMNS}
         idea.update({
@@ -166,6 +201,16 @@ class BuildTests(unittest.TestCase):
             self.assertNotIn("Not for viewer output", json.dumps(ideas))
             self.assertEqual(projects[0]["votes"], 5057)
             self.assertEqual(meta["counts"], {"ideas": 1, "projects": 1, "winners": 1})
+
+
+class ActiveReviewTests(unittest.TestCase):
+    def test_active_review_is_explicit_and_not_inferred_from_cycle(self):
+        row = {"PB Cycle": "13", "Project Status": "In review by PB13 Delegates"}
+        self.assertEqual(build.derive_outcome(row), "in_review")
+        self.assertEqual(build.derive_outcome({**row, "Project Status": ""}), "review")
+        self.assertEqual(build.derive_outcome({**row, "Winning Project ID": "PB13_1"}), "won")
+        self.assertEqual(build.derive_outcome({**row, "Idea Status": "Not advanced"}), "not_advanced")
+        self.assertEqual(build.derive_outcome({**row, "Project Status": "Being reviewed by volunteer Cambridge residents"}), "in_review")
 
 
 if __name__ == "__main__":

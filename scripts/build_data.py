@@ -35,7 +35,7 @@ PROJECTS_CACHE = SRC / "pb_projects_open_data.csv"
 IDEA_COLUMNS = {
     "PB Cycle", "Idea #", "Committee", "Project Title", "Project Description",
     "Project Status", "Location", "Latitude", "Longitude", "Winning Project ID",
-    "Idea Status", "Link to Other Information",
+    "Idea Status", "Link to Other Information", "Desired Impact",
 }
 PROJECT_COLUMNS = {
     "PB Cycle", "Project", "Winning Project ID", "Total Votes", "Winning project",
@@ -93,6 +93,7 @@ COMMITTEE_TO_THEME = {
     "Parks & Recreation": "parks",
     "Parks, Recreation & Education": "parks",
     "Facilities, Parks, and Recreation": "parks",
+    "Facilities, Parks & Recreation": "parks",
     "Environment": "env",
     "Environment, Health & Safety": "env",
     "Health, Environment & Safety": "env",
@@ -111,6 +112,14 @@ COMMITTEE_TO_THEME = {
 # free-text Project Status, and the Winning Project ID link.
 # ---------------------------------------------------------------------------
 OUTCOMES = {
+    "in_review": {
+        "label": "Being reviewed by volunteer Cambridge residents",
+        "color": "#1D2F8D",
+        "order": 9,
+        "processOrder": 0,
+        "rank": 8,
+        "description": "Volunteer PB Delegates are reviewing this idea in the current cycle. No final outcome has been decided.",
+    },
     "ineligible": {
         "label": "Not eligible",
         "color": "#9b2743",
@@ -200,6 +209,11 @@ def derive_outcome(row):
     ist = row.get("Idea Status", "").strip().lower()
     pst = row.get("Project Status", "").strip().lower()
 
+    if not win_id and not ist and pst in {
+        "in review by pb13 delegates",
+        "being reviewed by volunteer cambridge residents",
+    }:
+        return "in_review"
     if "previously winning" in ist:
         return "not_advanced"
     if (
@@ -251,6 +265,7 @@ CYCLE_META = {
     "10": {"label": "PB10", "dates": "Sep 2023 – Mar 2024", "voteYear": 2024},
     "11": {"label": "PB11", "dates": "Aug 2024 – Mar 2025", "voteYear": 2025},
     "12": {"label": "PB12", "dates": "Sep 2025 – Mar 2026", "voteYear": 2026},
+    "13": {"label": "PB13", "dates": "Aug 2026 – Mar 2027", "voteYear": 2027},
 }
 
 COORD_LINE = re.compile(r"\s*\(\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+\s*\)\s*$")
@@ -412,6 +427,9 @@ def main():
             "win": r["Winning Project ID"].strip() or None,
             "sourceUrl": r.get("Link to Other Information", "").strip() or None,
         }
+        impact = r["Desired Impact"].replace("\r", "").strip()
+        if impact:
+            rec["impact"] = impact
         ideas.append(rec)
 
     validate_project_links(ideas, projects)

@@ -32,7 +32,7 @@ function setup(url, withTag = true) {
     cycleByNum: { "12": { label: "PB12", dates: "" } },
     badgeHTML: () => "",
     safeHttpUrl: () => null,
-    esc: value => value,
+    esc: value => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
     $: selector => elements[selector] ||= {},
   };
   context.window = context;
@@ -99,10 +99,24 @@ test("blocked async script leaves a non-blocking queue; close/invalid IDs send n
 
 test("filter URL updates do not explicitly send or reinitialize analytics", () => {
   const { context } = setup("https://example.org/");
-  context.state = { q: "private query", cycles: new Set(["12"]), themes: new Set(), outcomes: new Set() };
+  context.state = { q: "private query", cycles: new Set(["12"]), committees: new Set(), themes: new Set(), outcomes: new Set() };
   const writeURL = code.slice(code.indexOf("  function writeURL()"), code.indexOf("  function filtered()"));
   vm.runInContext(writeURL + "\nwriteURL();", context);
   assert.equal(queued(context).length, 2);
   assert.equal(context.location.searchParams.get("q"), "private query");
   assert(!code.includes('"page_view"'));
+});
+
+test("desired impact is escaped in the drawer and never included in analytics", () => {
+  const { context, elements } = setup("https://example.org/");
+  context.ideas[0].impact = '<img src=x onerror="bad()"> Private impact';
+  context.__openIdea(0);
+  const drawerHTML = elements["#drawerBody"].innerHTML;
+  assert(drawerHTML.includes("<h3>Desired impact</h3>"));
+  assert(drawerHTML.includes("&lt;img src=x onerror=&quot;bad()&quot;&gt; Private impact"));
+  assert(!drawerHTML.includes("<img"));
+  assert(!JSON.stringify(queued(context)).includes("Private impact"));
+  delete context.ideas[0].impact;
+  context.__openIdea(0);
+  assert(!elements["#drawerBody"].innerHTML.includes("<h3>Desired impact</h3>"));
 });
