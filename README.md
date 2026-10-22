@@ -1,12 +1,13 @@
-# PB Ideas Explorer
+# Participatory Budgeting Ideas Explorer
 
 **Live site: https://pb-ideas-explorer.data.cambridgema.gov/**
 
 A static, no-server explorer for every idea Cambridge residents have submitted through
 [Participatory Budgeting](https://www.cambridgema.gov/participatorybudgeting) since 2014.
 It lets anyone quickly see trends across space and time — what has been proposed, where,
-when, and what happened next — and check whether an idea like theirs has come up before,
-ahead of [submitting a new one](https://pbideas.cambridgema.gov/page/overview).
+when, and what happened next — and check whether an idea like theirs has come up before.
+The header links to the [idea collection map](https://pbideas.cambridgema.gov/page/overview)
+for viewing submissions; idea collection is currently closed.
 
 This is a static reimplementation of the experimental Shiny app at
 [cambridgeitd/pb-dashboard](https://github.com/cambridgeitd/pb-dashboard). Because it is

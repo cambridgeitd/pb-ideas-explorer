@@ -45,15 +45,15 @@ h1, h2, h3 { font-family: var(--heading); font-weight: 600; margin: 0; }
   display: block; font-size: 12px; letter-spacing: 0.12em;
   text-transform: uppercase; opacity: 0.85;
 }
-.brand h1 { font-size: 30px; line-height: 1.15; letter-spacing: 0.02em; text-transform: uppercase; }
+.brand h1 { font-size: 30px; line-height: 1.15; letter-spacing: 0.02em; }
 .header-links { display: flex; align-items: center; gap: 18px; }
 .header-links a { color: #fff; text-decoration: none; font-weight: 700; font-size: 14px; }
 .header-links a:hover { text-decoration: underline; }
-.btn-submit {
+.btn-map {
   background: var(--red); padding: 9px 16px; border-radius: 4px;
-  text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--heading);
+  letter-spacing: 0.05em; font-family: var(--heading);
 }
-.btn-submit:hover { background: #b71f1e; text-decoration: none !important; }
+.btn-map:hover { background: #b71f1e; text-decoration: none !important; }
 
 /* ---------- intro ---------- */
 .intro { background: #fff; border-bottom: 1px solid var(--line); }
