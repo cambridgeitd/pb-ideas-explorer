@@ -15,12 +15,18 @@ plain HTML/CSS/JS, it needs no R server and is hosted free on GitHub Pages.
 
 ## Features
 
-- **Full-text search** across 12,000+ idea titles, descriptions, locations, and desired impacts
+- **Whole-word and phrase search** across 12,000+ idea titles, descriptions, locations, and desired impacts
 - **Filters** by PB cycle, original committee, theme, and outcome — combined, shown as removable chips, and mirrored to the URL so any view is shareable/bookmarkable
 - **Ideas-over-time chart**, stacked by theme or outcome; clicking a bar filters to that cycle
 - **Plain-language category guide** explaining the normalized themes and the chronological PB outcome stages
 - **Map** of ideas with supplied coordinates, colored by theme
 - **Card list** (replacing the old data table) with a detail drawer showing the full description, staff outcome notes, a mini-map, and — when the idea inspired a winning ballot project — that project's votes, cost, and locations
+
+Search ignores capitalization and matches the complete word or consecutive
+phrase you type: `tree` does not match `street` or `trees`, and `dog park` must
+occur together, in that order, within one field. Extra spaces and line breaks
+between phrase words are equivalent; punctuation is literal. Quotes are not
+needed. Highlighting uses the same rules.
 
 ## Data
 

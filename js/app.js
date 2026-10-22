@@ -27,9 +27,9 @@
       '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>',
   };
 
-  // Pre-computed lowercase haystack for fast search
+  // Pre-computed fields keep phrase matches from crossing between fields.
   for (const i of ideas) {
-    i._hay = (i.title + " " + i.desc + " " + i.location + " " + (i.impact || "")).toLowerCase();
+    i._searchFields = [i.title, i.desc, i.location, i.impact || ""];
   }
 
   // ---------- state ----------
@@ -67,15 +67,24 @@
     history.replaceState(null, "", qs ? "?" + qs : location.pathname);
   }
 
+  function searchPattern(query, global = false) {
+    const q = query.trim();
+    if (!q) return null;
+    const phrase = q.split(/\s+/).map((part) =>
+      part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    ).join("\\s+");
+    const wordChar = "[\\p{L}\\p{M}\\p{N}_]";
+    return new RegExp(`(?<!${wordChar})${phrase}(?!${wordChar})`, global ? "giu" : "iu");
+  }
+
   function filtered() {
-    const q = state.q.trim().toLowerCase();
-    const terms = q ? q.split(/\s+/) : [];
+    const pattern = searchPattern(state.q);
     return ideas.filter((i) => {
       if (state.cycles.size && !state.cycles.has(i.cycle)) return false;
       if (state.committees.size && !state.committees.has(i.committee)) return false;
       if (state.themes.size && !state.themes.has(i.theme)) return false;
       if (state.outcomes.size && !state.outcomes.has(i.outcome)) return false;
-      if (terms.length && !terms.every((t) => i._hay.includes(t))) return false;
+      if (pattern && !i._searchFields.some((text) => pattern.test(text))) return false;
       return true;
     });
   }
@@ -399,14 +408,20 @@
     return h;
   }
 
-  function highlight(text) {
-    const q = state.q.trim().toLowerCase();
-    if (!q) return esc(text);
-    let out = esc(text);
-    for (const term of new Set(q.split(/\s+/).filter((t) => t.length > 1))) {
-      out = out.replace(new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"), "<mark>$1</mark>");
+  function highlight(text, limit = text.length) {
+    const pattern = searchPattern(state.q, true);
+    const end = Math.min(limit, text.length);
+    if (!pattern) return esc(text.slice(0, end));
+    let out = "", cursor = 0;
+    // Match original text before escaping HTML or truncating the card preview.
+    for (const match of text.matchAll(pattern)) {
+      if (match.index >= end) break;
+      const matchEnd = Math.min(match.index + match[0].length, end);
+      out += esc(text.slice(cursor, match.index));
+      out += `<mark>${esc(text.slice(match.index, matchEnd))}</mark>`;
+      cursor = matchEnd;
     }
-    return out;
+    return out + esc(text.slice(cursor, end));
   }
 
   function renderCards(rows) {
@@ -422,7 +437,7 @@
       .map(
         (i) => `<article class="card" data-id="${i.id}" style="border-left-color:${THEMES[i.theme].color}" tabindex="0" role="button" aria-label="${esc(i.title)}">
           <h3>${highlight(i.title)}</h3>
-          <p class="desc">${highlight(i.desc.slice(0, 260))}</p>
+          <p class="desc">${highlight(i.desc, 260)}</p>
           <div class="badges">${badgeHTML(i)}</div>
         </article>`
       )
